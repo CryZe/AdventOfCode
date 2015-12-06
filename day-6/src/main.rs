@@ -1,8 +1,12 @@
 #[cfg(feature = "save")]
 extern crate image;
+#[cfg(feature = "save")]
+extern crate rand;
 
 #[cfg(feature = "save")]
 use image::RgbaImage;
+#[cfg(feature = "save")]
+use rand::distributions::{IndependentSample, Range};
 
 use std::path::Path;
 use std::fs::File;
@@ -129,14 +133,32 @@ impl DimmableLights {
     }
 
     #[cfg(feature = "save")]
-    fn write_to_image(&self, image: &mut RgbaImage) {
-        let max_brightness = self.lights.iter().fold(0, |a, &l| cmp::max(a, l));
+    fn write_to_image(&self) -> RgbaImage {
+        let mut image = RgbaImage::new(1000, 1000);
 
-        for it in image.enumerate_pixels_mut() {
-            let (x, y, pixel) = it;
-            let value = (0xFF * self.lights[(x + 1000 * y) as usize] / max_brightness) as u8;
-            pixel.data = [value, value, value, 0xFF];
+        let base_colors = [(255.0, 0.0, 0.0),
+                           (255.0, 0.0, 0.0),
+                           (0.0, 255.0, 0.0),
+                           (255.0, 255.0, 0.0),
+                           (255.0, 255.0, 0.0),
+                           (255.0, 255.0, 255.0),
+                           (0.0, 255.0, 255.0)];
+        let range = Range::new(0usize, base_colors.len());
+        let mut rng = rand::thread_rng();
+
+        let color_grid = (0..10000)
+                             .map(|_| base_colors[range.ind_sample(&mut rng)])
+                             .collect::<Vec<_>>();
+
+        let max_brightness = self.lights.iter().fold(0, |a, &l| cmp::max(a, l)) as f32;
+
+        for (x, y, pixel) in image.enumerate_pixels_mut() {
+            let value = self.lights[(x + 1000 * y) as usize] as f32 / max_brightness;
+            let (r, g, b) = color_grid[((x / 10) + 100 * (y / 10)) as usize];
+            pixel.data = [(value * r) as u8, (value * g) as u8, (value * b) as u8, 0xFF];
         }
+
+        image::imageops::blur(&image, 5.0)
     }
 }
 
@@ -158,8 +180,7 @@ fn save_lights(_: &DimmableLights) {}
 
 #[cfg(feature = "save")]
 fn save_lights(lights: &DimmableLights) {
-    let mut image = RgbaImage::new(1000, 1000);
-    lights.write_to_image(&mut image);
+    let image = lights.write_to_image();
     let _result = image.save("image.png");
 
     println!("Image saved");

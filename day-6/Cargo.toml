@@ -4,7 +4,8 @@ version = "0.1.0"
 authors = ["Christopher Serr <cryze92@gmail.com>"]
 
 [features]
-save = ["image"]
+save = ["image", "rand"]
 
 [dependencies]
 image = { version = "*", optional = true }
+rand = { version = "*", optional = true }
