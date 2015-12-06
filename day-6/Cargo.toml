@@ -2,3 +2,9 @@
 name = "day-6"
 version = "0.1.0"
 authors = ["Christopher Serr <cryze92@gmail.com>"]
+
+[features]
+save = ["image"]
+
+[dependencies]
+image = { version = "*", optional = true }

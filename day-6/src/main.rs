@@ -1,3 +1,9 @@
+#[cfg(feature = "save")]
+extern crate image;
+
+#[cfg(feature = "save")]
+use image::RgbaImage;
+
 use std::path::Path;
 use std::fs::File;
 use std::io::prelude::*;
@@ -121,6 +127,17 @@ impl DimmableLights {
     fn get_active_lights_count(&self) -> isize {
         self.lights.iter().fold(0, |a, &l| a + l as isize)
     }
+
+    #[cfg(feature = "save")]
+    fn write_to_image(&self, image: &mut RgbaImage) {
+        let max_brightness = self.lights.iter().fold(0, |a, &l| cmp::max(a, l));
+
+        for it in image.enumerate_pixels_mut() {
+            let (x, y, pixel) = it;
+            let value = (0xFF * self.lights[(x + 1000 * y) as usize] / max_brightness) as u8;
+            pixel.data = [value, value, value, 0xFF];
+        }
+    }
 }
 
 fn read_file(path: &Path) -> Vec<String> {
@@ -136,6 +153,18 @@ fn parse_instructions<'a, I>(lines: I) -> Vec<Instruction>
     lines.into_iter().map(|l| Instruction::parse(l)).collect()
 }
 
+#[cfg(not(feature = "save"))]
+fn save_lights(_: &DimmableLights) {}
+
+#[cfg(feature = "save")]
+fn save_lights(lights: &DimmableLights) {
+    let mut image = RgbaImage::new(1000, 1000);
+    lights.write_to_image(&mut image);
+    let _result = image.save("image.png");
+
+    println!("Image saved");
+}
+
 fn main() {
     let lines = read_file(Path::new("input.txt"));
     let instructions = parse_instructions(&lines);
@@ -149,6 +178,8 @@ fn main() {
     dimmable_lights.apply_instructions(&instructions);
     let active_dimmable_lights = dimmable_lights.get_active_lights_count();
     println!("Active Dimmable Lights: {}", active_dimmable_lights);
+
+    save_lights(&dimmable_lights);
 }
 
 #[test]
