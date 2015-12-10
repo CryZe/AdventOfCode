@@ -1,38 +1,21 @@
 extern crate itertools;
 
-use itertools::{Unfold, Itertools};
+use itertools::Itertools;
 use std::str::FromStr;
-use std::iter::Rev;
-use std::vec::IntoIter;
 
-fn number_to_digits(number: usize) -> Rev<IntoIter<usize>> {
-    Unfold::new(number, |n| {
-        if *n > 0 {
-            let res = *n % 10;
-            *n /= 10;
-            Some(res)
-        } else {
-            None
-        }
-    })
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-}
-
-fn get_next_number<'a, I>(number: I) -> Vec<usize>
-    where I: IntoIterator<Item = &'a usize>
+fn get_next_number<'a, I>(number: I) -> Vec<u8>
+    where I: IntoIterator<Item = &'a u8>
 {
     number.into_iter()
           .group_by(|&n| *n)
           .flat_map(|(key, group)| {
-              number_to_digits(group.len()).into_iter().chain(vec![key].into_iter())
+              vec![group.len() as u8, key]
           })
           .collect()
 }
 
-fn get_number_after_n_iterations<'a, I>(number: I, n: usize) -> Vec<usize>
-    where I: IntoIterator<Item = &'a usize>
+fn get_number_after_n_iterations<'a, I>(number: I, n: usize) -> Vec<u8>
+    where I: IntoIterator<Item = &'a u8>
 {
     (0..n).fold(number.into_iter().cloned().collect(),
                 |n, _| get_next_number(&n))
