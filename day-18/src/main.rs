@@ -1,5 +1,8 @@
 extern crate image;
+extern crate rand;
 
+use rand::{SeedableRng, StdRng};
+use rand::distributions::{IndependentSample, Range};
 use image::RgbaImage;
 use std::ops::{Index, IndexMut};
 use std::path::{Path, PathBuf};
@@ -75,17 +78,38 @@ impl Lights {
     }
 
     fn write_to_image(&self) -> RgbaImage {
-        let mut image = RgbaImage::new(100, 100);
+        let mut image = RgbaImage::new(1000, 1000);
+
+        let base_colors = [(255.0, 0.0, 0.0),
+                           (255.0, 0.0, 0.0),
+                           (0.0, 255.0, 0.0),
+                           (255.0, 255.0, 0.0),
+                           (255.0, 255.0, 0.0),
+                           (255.0, 255.0, 255.0),
+                           (0.0, 255.0, 255.0)];
+        let range = Range::new(0usize, base_colors.len());
+        let mut rng = StdRng::from_seed(&[1, 2, 3, 4]);
+
+        let color_grid = (0..10000)
+                             .map(|_| base_colors[range.ind_sample(&mut rng)])
+                             .collect::<Vec<_>>();
 
         for (x, y, pixel) in image.enumerate_pixels_mut() {
-            pixel.data = if self[(x as usize, y as usize)] {
-                [0xFF, 0xFF, 0xFF, 0xFF]
+            let distance = f32::hypot((x as i32 % 10 - 5) as f32, (y as i32 % 10 - 5) as f32);
+            let value = if self[(x as usize / 10, y as usize / 10)] {
+                1.0
             } else {
-                [0x00, 0x00, 0x00, 0xFF]
+                0.2
             };
+            let (r, g, b) = if distance < 4.0 {
+                color_grid[((x / 10) + 100 * (y / 10)) as usize]
+            } else {
+                (0.0, 0.0, 0.0)
+            };
+            pixel.data = [(value * r) as u8, (value * g) as u8, (value * b) as u8, 0xFF];
         }
 
-        image
+        image::imageops::blur(&image, 2.5)
     }
 
     fn count_active_lights(&self) -> usize {
